@@ -84,6 +84,7 @@
 
         self.executing = YES;
         self.connection = [NSURLConnection.alloc initWithRequest:self.request delegate:self startImmediately:NO];
+        self.thread = [NSThread currentThread];
     }
 
     [self.connection start];
