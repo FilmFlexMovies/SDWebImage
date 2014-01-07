@@ -93,7 +93,7 @@
     {
         if (self.progressBlock)
         {
-            self.progressBlock(0, -1);
+            self.progressBlock(0, NSURLResponseUnknownLength);
         }
         [[NSNotificationCenter defaultCenter] postNotificationName:SDWebImageDownloadStartNotification object:self];
 
