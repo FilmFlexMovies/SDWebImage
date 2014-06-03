@@ -179,7 +179,7 @@
     [self didChangeValueForKey:@"isFinished"];
 }
 
-- (BOOL)finished
+- (BOOL)isFinished
 {
     return _finished;
 }
@@ -190,7 +190,7 @@
     [self didChangeValueForKey:@"isExecuting"];
 }
 
-- (BOOL)executing
+- (BOOL)isExecuting
 {
     return _executing;
 }
