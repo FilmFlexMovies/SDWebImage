@@ -8,9 +8,10 @@
 
 #import "UIImageView+WebCache.h"
 #import "objc/runtime.h"
-#import "UIView+WebCacheOperation.h"
 
 static char imageURLKey;
+static char operationKey;
+static char operationArrayKey;
 
 @implementation UIImageView (WebCache)
 
@@ -67,18 +68,16 @@ static char imageURLKey;
                 }
             });
         }];
-        [self setImageLoadOperation:operation forKey:@"UIImageViewImageLoad"];
+        objc_setAssociatedObject(self, &operationKey, operation, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
     }
 }
 
-- (NSURL *)imageURL;
-{
+- (NSURL *)imageURL {
     return objc_getAssociatedObject(self, &imageURLKey);
 }
 
-- (void)setAnimationImagesWithURLs:(NSArray *)arrayOfURLs
-{
-    [self cancelCurrentAnimationImagesLoad];
+- (void)setAnimationImagesWithURLs:(NSArray *)arrayOfURLs {
+    [self cancelCurrentArrayLoad];
     __weak UIImageView *wself = self;
 
     NSMutableArray *operationsArray = [[NSMutableArray alloc] init];
@@ -105,15 +104,27 @@ static char imageURLKey;
         [operationsArray addObject:operation];
     }
 
-    [self setImageLoadOperation:[NSArray arrayWithArray:operationsArray] forKey:@"UIImageViewAnimationImages"];
+    objc_setAssociatedObject(self, &operationArrayKey, [NSArray arrayWithArray:operationsArray], OBJC_ASSOCIATION_RETAIN_NONATOMIC);
 }
 
 - (void)cancelCurrentImageLoad {
-    [self cancelImageLoadOperationWithKey:@"UIImageViewImageLoad"];
+    // Cancel in progress downloader from queue
+    id <SDWebImageOperation> operation = objc_getAssociatedObject(self, &operationKey);
+    if (operation) {
+        [operation cancel];
+        objc_setAssociatedObject(self, &operationKey, nil, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+    }
 }
 
-- (void)cancelCurrentAnimationImagesLoad {
-    [self cancelImageLoadOperationWithKey:@"UIImageViewAnimationImages"];
+- (void)cancelCurrentArrayLoad {
+    // Cancel in progress downloader from queue
+    NSArray *operations = objc_getAssociatedObject(self, &operationArrayKey);
+    for (id <SDWebImageOperation> operation in operations) {
+        if (operation) {
+            [operation cancel];
+        }
+    }
+    objc_setAssociatedObject(self, &operationArrayKey, nil, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
 }
 
 @end
