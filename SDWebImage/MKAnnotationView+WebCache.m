@@ -8,9 +8,9 @@
 
 #import "MKAnnotationView+WebCache.h"
 #import "objc/runtime.h"
-#import "UIView+WebCacheOperation.h"
 
 static char imageURLKey;
+static char operationKey;
 
 @implementation MKAnnotationView (WebCache)
 
@@ -59,12 +59,24 @@ static char imageURLKey;
                 }
             });
         }];
-        [self setImageLoadOperation:operation forKey:@"MKAnnotationViewImage"];
+        objc_setAssociatedObject(self, &operationKey, operation, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+    } else {
+        dispatch_main_async_safe(^{
+            NSError *error = [NSError errorWithDomain:@"SDWebImageErrorDomain" code:-1 userInfo:@{NSLocalizedDescriptionKey : @"Trying to load a nil url"}];
+            if (completedBlock) {
+                completedBlock(nil, error, SDImageCacheTypeNone, url);
+            }
+        });
     }
 }
 
 - (void)cancelCurrentImageLoad {
-    [self cancelImageLoadOperationWithKey:@"MKAnnotationViewImage"];
+    // Cancel in progress downloader from queue
+    id <SDWebImageOperation> operation = objc_getAssociatedObject(self, &operationKey);
+    if (operation) {
+        [operation cancel];
+        objc_setAssociatedObject(self, &operationKey, nil, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+    }
 }
 
 @end
