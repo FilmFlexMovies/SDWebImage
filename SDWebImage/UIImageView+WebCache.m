@@ -8,10 +8,9 @@
 
 #import "UIImageView+WebCache.h"
 #import "objc/runtime.h"
+#import "UIView+WebCacheOperation.h"
 
 static char imageURLKey;
-static char operationKey;
-static char operationArrayKey;
 
 @implementation UIImageView (WebCache)
 
@@ -40,7 +39,7 @@ static char operationArrayKey;
 }
 
 - (void)sd_setImageWithURL:(NSURL *)url placeholderImage:(UIImage *)placeholder options:(SDWebImageOptions)options progress:(SDWebImageDownloaderProgressBlock)progressBlock completed:(SDWebImageCompletionBlock)completedBlock {
-    [self cancelCurrentImageLoad];
+    [self sd_cancelCurrentImageLoad];
     objc_setAssociatedObject(self, &imageURLKey, url, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
 
     if (!(options & SDWebImageDelayPlaceholder)) {
@@ -67,7 +66,7 @@ static char operationArrayKey;
                 }
             });
         }];
-        objc_setAssociatedObject(self, &operationKey, operation, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+        [self sd_setImageLoadOperation:operation forKey:@"UIImageViewImageLoad"];
     } else {
         dispatch_main_async_safe(^{
             NSError *error = [NSError errorWithDomain:@"SDWebImageErrorDomain" code:-1 userInfo:@{NSLocalizedDescriptionKey : @"Trying to load a nil url"}];
@@ -78,12 +77,12 @@ static char operationArrayKey;
     }
 }
 
-- (NSURL *)imageURL {
+- (NSURL *)sd_imageURL {
     return objc_getAssociatedObject(self, &imageURLKey);
 }
 
-- (void)setAnimationImagesWithURLs:(NSArray *)arrayOfURLs {
-    [self cancelCurrentArrayLoad];
+- (void)sd_setAnimationImagesWithURLs:(NSArray *)arrayOfURLs {
+    [self sd_cancelCurrentAnimationImagesLoad];
     __weak UIImageView *wself = self;
 
     NSMutableArray *operationsArray = [[NSMutableArray alloc] init];
@@ -110,33 +109,25 @@ static char operationArrayKey;
         [operationsArray addObject:operation];
     }
 
-    objc_setAssociatedObject(self, &operationArrayKey, [NSArray arrayWithArray:operationsArray], OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+    [self sd_setImageLoadOperation:[NSArray arrayWithArray:operationsArray] forKey:@"UIImageViewAnimationImages"];
 }
 
-- (void)cancelCurrentImageLoad {
-    // Cancel in progress downloader from queue
-    id <SDWebImageOperation> operation = objc_getAssociatedObject(self, &operationKey);
-    if (operation) {
-        [operation cancel];
-        objc_setAssociatedObject(self, &operationKey, nil, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
-    }
+- (void)sd_cancelCurrentImageLoad {
+    [self sd_cancelImageLoadOperationWithKey:@"UIImageViewImageLoad"];
 }
 
-- (void)cancelCurrentArrayLoad {
-    // Cancel in progress downloader from queue
-    NSArray *operations = objc_getAssociatedObject(self, &operationArrayKey);
-    for (id <SDWebImageOperation> operation in operations) {
-        if (operation) {
-            [operation cancel];
-        }
-    }
-    objc_setAssociatedObject(self, &operationArrayKey, nil, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+- (void)sd_cancelCurrentAnimationImagesLoad {
+    [self sd_cancelImageLoadOperationWithKey:@"UIImageViewAnimationImages"];
 }
 
 @end
 
 
 @implementation UIImageView (WebCacheDeprecated)
+
+- (NSURL *)imageURL {
+    return [self sd_imageURL];
+}
 
 - (void)setImageWithURL:(NSURL *)url {
     [self sd_setImageWithURL:url placeholderImage:nil options:0 progress:nil completed:nil];
@@ -164,7 +155,6 @@ static char operationArrayKey;
             completedBlock(image, error, cacheType);
         }
     }];
-
 }
 
 - (void)setImageWithURL:(NSURL *)url placeholderImage:(UIImage *)placeholder options:(SDWebImageOptions)options completed:(SDWebImageCompletedBlock)completedBlock {
@@ -173,7 +163,6 @@ static char operationArrayKey;
             completedBlock(image, error, cacheType);
         }
     }];
-
 }
 
 - (void)setImageWithURL:(NSURL *)url placeholderImage:(UIImage *)placeholder options:(SDWebImageOptions)options progress:(SDWebImageDownloaderProgressBlock)progressBlock completed:(SDWebImageCompletedBlock)completedBlock {
@@ -182,11 +171,18 @@ static char operationArrayKey;
             completedBlock(image, error, cacheType);
         }
     }];
-
 }
 
 - (void)cancelCurrentArrayLoad {
-    [self cancelCurrentAnimationImagesLoad];
+    [self sd_cancelCurrentAnimationImagesLoad];
+}
+
+- (void)cancelCurrentImageLoad {
+    [self sd_cancelCurrentImageLoad];
+}
+
+- (void)setAnimationImagesWithURLs:(NSArray *)arrayOfURLs {
+    [self sd_setAnimationImagesWithURLs:arrayOfURLs];
 }
 
 @end
