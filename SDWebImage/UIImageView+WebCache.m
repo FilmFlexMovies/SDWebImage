@@ -185,4 +185,8 @@ static char operationArrayKey;
 
 }
 
+- (void)cancelCurrentArrayLoad {
+    [self cancelCurrentAnimationImagesLoad];
+}
+
 @end

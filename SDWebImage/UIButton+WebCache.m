@@ -234,4 +234,9 @@ static char operationKey;
     }];
 }
 
+- (void)cancelCurrentImageLoad {
+    // in a backwards compatible manner, cancel for current state
+    [self cancelImageLoadOperationWithKey:[NSString stringWithFormat:@"UIButtonImageOperation%@", @(self.state)]];
+}
+
 @end
